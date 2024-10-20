@@ -1,5 +1,25 @@
 import mysql from 'mysql2/promise';
-
+import axios from 'axios';
+const sendSmsUsingMsg91 = async (
+  authKey,
+  senderId,
+  message,
+  mobile,
+  Dlt_Template_Id,
+  Registration_Id
+) => {
+  const url = `https://api.msg91.com/api/sendhttp.php?authkey=${authKey}&sender=${senderId}&route=4&message=${encodeURIComponent(
+    message
+  )}&mobiles=${mobile}&DLT_TE_ID=${Dlt_Template_Id}&PE_ID=${Registration_Id}`;
+  try {
+  axios.get(url);
+    //console.log(result);
+    // return { status: result.status, resultData: result.data };
+  } catch (error) {
+    console.log(error.message);
+    throw new Error(error.message);
+  }
+};
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     // Handle creating a new bill
@@ -28,15 +48,28 @@ export default async function handler(req, res) {
       const [result] = await connection.execute(query, values);
 
       // Close the connection
-      await connection.end();
-
+       await connection.end();
+       try{
+        sendSmsUsingMsg91(
+          process.env.MSG91_AUTH_KEY,
+          process.env.SENDER_ID,
+          `Dear ${name}, Thank you for shopping with us. Your total billing amount is Rs. ${amount}. Regards, IIFEDC`,
+          `91${phone}`,
+          process.env.DLT_TEPLATE_ID,
+          process.env.REGISTRATION_ID
+        )
+       }
+       catch(e){
+        
+       }
+     
       // Send success response
       return res.status(201).json({ message: "Bill created successfully!", id: result.insertId });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Internal server error." });
     }
-    
+
   } else if (req.method === 'GET') {
     // Handle fetching all bills with pagination
     const page = parseInt(req.query.page) || 1; // Default to page 1
